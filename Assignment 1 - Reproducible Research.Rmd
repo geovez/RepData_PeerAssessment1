@@ -1,0 +1,152 @@
+---
+title: "Assignment 1 - Reproducible research"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Data Preparation
+
+
+For this assignment we need to download a dataset from the course web site with a name **"Activity monitoring data"**
+
+It is a zipped file so we need to unzip it first to get the input csv file. 
+
+### Question 1
+
+Since we have the file in our working directory all we need to do is to read the file. A view of the file will show us that there are a lot of NA values in our dataset. This is why we decided to split the original dataset in two subsets, one with only the NA values and a second one clean without NAs. The first dataset is named **"activity_na"** and will contain all the NA cases without column **"steps"** (this will help us in later phase). The second dataset is named **"activity_clear"** and contains all three columns without any line with NAs. The code used is shown in the following chunk: 
+
+```{r}
+###reading and cleaning dataset
+activity<- read.csv("C:/Users/geovez/Documents/activity.csv", sep=",")
+var_cleaning<-!is.na(activity$steps)
+var_na<-is.na(activity$steps)
+activity_clear<- activity[var_cleaning,]
+activity_na<-activity[var_na,]
+activity_na<-activity_na[,c(2,3)]
+```
+
+
+### Question 2 
+
+In this question we need the histogram of total number of steps taken each day. In order to create this graph we first need to aggregate the dataset summing all available records for each date. In this case it is obvious that we will use the clean dataset **"activity_clear"** and we will perform aggregation using the **aggregate()** funtion in R 
+
+```{r}
+###Histogram of total number of steps ####
+hist1<-aggregate(x=activity_clear["steps"], FUN = sum, by = list(date = activity_clear$date))
+
+print(head(hist1))
+
+hist(hist1$steps, xlab="Steps per Day", ylab="Frequency", main= "Total number of steps taken per day", col="green" )
+```
+
+### Question 3
+
+For this question we will need the **"hist1"** dataset that we built in the previous questions. Using functions **mean()** and **median()** we can simply take the requested results 
+
+```{r}
+#### Steps mean and median ####
+steps_mean<-mean(hist1$steps)
+steps_median<-median(hist1$steps)
+print(steps_mean)
+print(steps_median)
+```
+
+### Question 4
+
+We need the average steps taken as a time series meaning we should plot the steps over the time intervals. We will again use the **aggregate()** function nd take the mean steps for every interval accross all dates. We will then plot this dataset (**"steps_interval_mean"**)
+
+
+```{r}
+######### Plot average steps / interval ##########
+steps_interval_mean<-aggregate(steps ~ interval, data = activity_clear, FUN = mean)
+plot(steps_interval_mean, type="l", main="Average steps during All days without NAs", col="red")
+```
+
+
+### Question 5
+
+The dataset **"steps_interval_mean"** from question 4 will be our anchor for this question too. In this dataset we have the average steps per interval. Hence, we can find what is the maximum steps in this dataset and then with contribution of the function **which()** we will also find in which interval this maximum occurs
+
+```{r}
+############# Max intervals ##############
+steps_max<-max(steps_interval_mean$steps)
+
+max_interval<- steps_interval_mean$interval[which(steps_interval_mean$steps == steps_max)]
+```
+
+```{r}
+print(steps_max)
+print(max_interval)
+```
+
+The interval where maximum number of steps occurs is 835 which corresponds to 8:35 o' clock in the morning which makes sense since this is the time people are going to work. 
+
+
+### Question 6 
+
+
+In this question we need to impute missing data. A standard method is to use the mean of the dataset and fill all empty lines with that value and the help of the **impute()** function. However, in our case this wouldn't be very accurate since the mean value from all the time intervals and accross all dates is around 37 steps. Then we would see dates where the first time intervals have NAs in steps and filled with this mean value. 
+
+Our approach is to use the dataset **"steps_interval_mean"** where we have the average number of steps per interval. Then we could match this dataset with the dataset **"activity_na"** using as key the intervals. In few words, every row in the **"activity_na"** will be filled with the average number of steps that matches with the interval of the row, taken from the other dataset. This matching will be performed with function **left_join()** found in the **dplyr** library       
+
+
+```{r}
+#### Imputing Missing Data ####
+library(dplyr)
+match_dataset=left_join(activity_na, steps_interval_mean, by="interval")
+
+imputed_data<-match_dataset[,c(3,1,2)]
+
+imputed_data$steps<-as.integer(imputed_data$steps)
+
+activity_all=rbind(imputed_data, activity_clear)
+
+```
+
+
+Average number of steps has been added as a column in the **"imputed_data"** dataset and we only need to reorder columns (bring "steps" as the first column), formating "steps" as integer (comes as numeric after the join) and then combine the two datasets with **rbind()** function. 
+
+
+### Question 7
+
+After missing data have been imputed we need to repeat the code from Question 2 using **"activity_all"** dataset this time. 
+
+
+```{r}
+#### Histogram after imputing the missing values ####
+
+hist2<-aggregate(x=activity_all["steps"], FUN = sum, by = list(date = activity_all$date))
+hist(hist2$steps, xlab="Steps per Day", ylab="Frequency", main= "Total number of steps taken per day", col="green" )
+
+```
+
+
+### Question 8
+
+
+For this question we need to add a column with a day flag giving True for weekdays and False for Weekends. Thus, we will use **isWeekday()** function from **timeDate** library. Before doing that we just need to format our date column in a date format with function **as. Date()**
+
+As a final step we need to create an aggregated dataset with average steps and interval for weekdays (where flag=TRUE) and a similar one for weekends( flag=FALSE)
+
+
+```{r}
+library(timeDate)
+
+activity_all$date<-as.Date(activity_all$date)
+
+activity_all["Day_flag"]<-isWeekday(activity_all$date, wday=1:5)
+
+activity_weekdays <- aggregate(steps~interval, subset(activity_all, Day_flag == TRUE), mean)
+activity_weekends<- aggregate(steps~interval, subset(activity_all, Day_flag == FALSE), mean)
+
+plot(activity_weekdays, type="l", main="Average steps during Weekdays", col="blue")
+plot(activity_weekends, type="l", main="Average steps during Weekends", col="red")
+```
+
+
+
