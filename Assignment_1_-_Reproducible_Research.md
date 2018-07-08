@@ -1,3 +1,11 @@
+###### md\_document:
+
+###### variant: markdown\_github
+
+###### html\_document:
+
+###### df\_print: paged
+
 Data Preparation
 ----------------
 

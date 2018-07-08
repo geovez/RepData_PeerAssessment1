@@ -1,15 +1,22 @@
 ---
 title: "Assignment 1 - Reproducible research"
-output:
+output: 
   md_document:
-    variant: markdown_github
-  html_document:
-    df_print: paged
----
+      variant: markdown_github
+  html_document:    
+      df_print: paged
+
+---   
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+
+######  md_document:
+######    variant: markdown_github
+######  html_document:
+######    df_print: paged
 
 
 
